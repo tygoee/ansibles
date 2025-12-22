@@ -1,0 +1,4 @@
+- name: Install podman and the quadlets
+  hosts: localhost
+  roles:
+    - podman

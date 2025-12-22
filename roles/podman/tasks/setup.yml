@@ -1,0 +1,27 @@
+- name: Install podman
+  ansible.builtin.dnf:
+    name: podman
+    state: latest
+
+- name: Create podman user
+  ansible.builtin.user:
+    name: "{{ podman_user }}"
+    uid: "{{ podman_uid }}"
+    home: "{{ podman_home }}"
+
+# Loginctl is from systemd, installed by default
+- name: Enable linger for podman user
+  ansible.builtin.command:
+    argv:
+      - /usr/bin/loginctl
+      - enable-linger
+      - "{{ podman_user }}"
+    creates: "/var/lib/systemd/linger/{{ podman_user }}"
+
+- name: Creates quadlet directory
+  ansible.builtin.file:
+    path: "{{ podman_home }}/.config/containers/systemd"
+    state: directory
+    mode: "644"
+    owner: "{{ podman_user }}"
+    group: "{{ podman_user }}"
