@@ -1,0 +1,3 @@
+setup_packages:
+  - acl # needed for ansible changing users
+  - systemd-container # for machinectl

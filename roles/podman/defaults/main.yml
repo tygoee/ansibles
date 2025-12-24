@@ -1,3 +1,0 @@
-podman_user: podman
-podman_uid: 2000
-podman_home: "/home/{{ podman_user }}"

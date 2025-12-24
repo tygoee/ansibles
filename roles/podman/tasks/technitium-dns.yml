@@ -1,0 +1,16 @@
+- name: Copy dns-server container file
+  ansible.builtin.copy:
+    src: "quadlets/technitium-dns/dns-server.container"
+    dest: "{{ podman.home }}/.config/containers/systemd/"
+    mode: "644"
+    owner: "{{ podman.user }}"
+    group: "{{ podman.group }}"
+
+- name: Start dns-server
+  become: true
+  become_user: "{{ podman.user }}"
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+    name: dns-server
+    scope: user
+    state: started

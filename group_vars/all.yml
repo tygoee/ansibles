@@ -1,0 +1,10 @@
+timezone: Region/City
+
+# Usually user=group and uid=gid
+# You can have multiple apps with the same user/uid configuration
+podman:
+  user: podman
+  group: podman
+  uid: 2000
+  gid: 2000
+  home: /home/podman

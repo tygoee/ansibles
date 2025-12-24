@@ -1,3 +1,11 @@
-- name: Install and configure podman
+- name: Install podman with containers
   become: true
-  ansible.builtin.import_tasks: setup.yml
+  block:
+    - name: Install and configure podman
+      ansible.builtin.import_tasks: setup.yml
+
+    - name: Install dns-server
+      ansible.builtin.import_tasks: technitium-dns.yml
+
+    - name: Install portainer
+      ansible.builtin.import_tasks: portainer.yml
