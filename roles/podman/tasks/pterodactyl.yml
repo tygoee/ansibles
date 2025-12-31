@@ -1,0 +1,84 @@
+- name: Log in as the {{ user.name }} user
+  become: true
+  become_user: "{{ user.name }}"
+  block:
+    - name: Copy pterodactyl container files
+      ansible.builtin.copy:
+        src: quadlets/pterodactyl/containers/
+        dest: "{{ user.home }}/.config/containers/systemd/"
+        mode: "644"
+
+    - name: Copy templated pterodactyl container override file
+      vars:
+        panel_host: "{{ secrets.pterodactyl.panel_host }}"
+        wings_host: "{{ secrets.pterodactyl.wings_host }}"
+      ansible.builtin.template:
+        src: quadlets/pterodactyl/override.conf
+        dest: "{{ user.home }}/.config/containers/systemd/pterodactyl.pod.d/"
+        mode: "644"
+
+    - name: Copy templated pterodactyl environment files
+      vars:
+        app_url: "{{ secrets.pterodactyl.app_url }}"
+      ansible.builtin.template:
+        src: quadlets/pterodactyl/pterodactyl.env
+        dest: "{{ user.home }}/.config/containers/environment/"
+        mode: "644"
+
+
+    - name: Create pterodactyl podman secrets
+      containers.podman.podman_secret:
+        name: "{{ item.key }}"
+        data: "{{ item.value }}"
+      loop: "{{ secrets.pterodactyl.podman | dict2items }}"
+      no_log: true
+
+    - name: Enable the podman socket for pterodactyl
+      ansible.builtin.systemd:
+        daemon_reload: true
+        name: podman.socket
+        scope: user
+        enabled: true
+        state: started
+
+    - name: Start the pterodactyl pod
+      ansible.builtin.systemd_service:
+        name: pterodactyl-pod
+        scope: user
+        state: started
+
+- name: Wait for volume creation
+  ansible.builtin.wait_for:
+    path: "{{ user.home }}/.local/share/containers/storage/volumes/pterodactyl-data/"
+    state: present
+    timeout: 30
+
+- name: Make a symlink from /var/lib/pterodactyl
+  ansible.builtin.file:
+    src: "{{ user.home }}/.local/share/containers/storage/volumes/pterodactyl-data/_data"
+    dest: "/var/lib/pterodactyl"
+    state: link
+
+- name: Log in as the {{ user.name }} user
+  become: true
+  become_user: "{{ user.name }}"
+  block:
+    - name: Create pterodactyl panel admin
+      vars:
+        admin: "{{ secrets.pterodactyl.admin }}"
+      containers.podman.podman_container_exec:
+        name: pterodactyl-panel
+        argv:
+          - /usr/local/bin/php
+          - artisan
+          - p:user:make
+          - "--email={{ admin.email }}"
+          - "--username={{ admin.username }}"
+          - "--name-first={{ admin.first_name }}"
+          - "--name-last={{ admin.last_name }}"
+          - "--password={{ admin.password }}"
+          - "--admin=1"
+      register: output
+      changed_when: output.rc == 0
+      failed_when: false
+      no_log: true

@@ -1,6 +1,5 @@
 - name: Install some packages
   become: true
   ansible.builtin.dnf:
-    name: "{{ item }}"
+    name: "{{ setup_packages }}"
     state: present
-  loop: "{{ setup_packages }}"

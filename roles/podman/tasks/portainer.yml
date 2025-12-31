@@ -1,16 +1,14 @@
-- name: Copy portainer container file
-  ansible.builtin.copy:
-    src: "quadlets/portainer/portainer.container"
-    dest: "{{ podman.home }}/.config/containers/systemd/"
-    mode: "644"
-    owner: "{{ podman.user }}"
-    group: "{{ podman.group }}"
-
-- name: Log in as the podman user
+- name: Log in as the {{ user.name }} user
   become: true
-  become_user: "{{ podman.user }}"
+  become_user: "{{ user.name }}"
   block:
-    - name: Enable podman socket
+    - name: Copy portainer container file
+      ansible.builtin.copy:
+        src: quadlets/portainer/portainer.container
+        dest: "{{ user.home }}/.config/containers/systemd/"
+        mode: "644"
+
+    - name: Enable the podman socket for portainer
       ansible.builtin.systemd:
         daemon_reload: true
         name: podman.socket

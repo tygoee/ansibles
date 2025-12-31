@@ -1,0 +1,3 @@
+# Internal
+# Tracks users which have been set up
+podman_initialized_users: []

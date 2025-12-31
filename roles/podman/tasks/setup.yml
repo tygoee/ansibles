@@ -1,30 +1,35 @@
-- name: Install podman
-  ansible.builtin.dnf:
-    name: podman
-    state: present
+- name: Setup the {{ user.name }} user
+  when: user.name not in podman_initialized_users
+  block:
+    - name: Create the {{ user.name }} user
+      ansible.builtin.user:
+        name: "{{ user.name }}"
+        uid: "{{ user.uid }}"
+        home: "{{ user.home }}"
 
-- name: Create podman user
-  ansible.builtin.user:
-    name: "{{ podman.user }}"
-    uid: "{{ podman.uid }}"
-    home: "{{ podman.home }}"
+    # Loginctl is from systemd, installed by default
+    - name: Enable linger for the {{ user.name }} user
+      ansible.builtin.command:
+        argv:
+          - /usr/bin/loginctl
+          - enable-linger
+          - "{{ user.name }}"
+        creates: "/var/lib/systemd/linger/{{ user.name }}"
 
-# Loginctl is from systemd, installed by default
-- name: Enable linger for podman user
-  ansible.builtin.command:
-    argv:
-      - /usr/bin/loginctl
-      - enable-linger
-      - "{{ podman.user }}"
-    creates: "/var/lib/systemd/linger/{{ podman.user }}"
+    - name: Create quadlet and environment directory for the {{ user.name }} user
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        mode: "755"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+      loop:
+        - "{{ user.home }}/.config/containers/systemd/"
+        - "{{ user.home }}/.config/containers/environment/"
 
-- name: Create quadlet and environment directory
-  ansible.builtin.file:
-    path: "{{ item }}"
-    state: directory
-    mode: "755"
-    owner: "{{ podman.user }}"
-    group: "{{ podman.group }}"
-  loop:
-    - "{{ podman.home }}/.config/containers/systemd/"
-    - "{{ podman.home }}/.config/containers/environment/"
+    - name: Mark the {{ user.name }} user initialized
+      ansible.builtin.set_fact:
+        podman_initialized_users: "{{ podman_initialized_users + [user.name] }}"
+
+- name: Install {{ container_name }} container
+  ansible.builtin.include_tasks: "{{ container_name }}.yml"
