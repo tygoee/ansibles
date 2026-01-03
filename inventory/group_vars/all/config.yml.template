@@ -1,0 +1,71 @@
+# Rename this file to config.yml and fill in the required configuration
+pterodactyl:
+  # Panel url/ip, also include the scheme (http(s)://)
+  # and the port if it isn't 80 (http) or 443 (https)
+  app_url: http://x.x.x.x:8000/
+  # No scheme/port, set both to host.containers.internal when not using a proxy
+  panel_host: host.containers.internal
+  wings_host: host.containers.internal
+
+  # All podman secrets should preferably be alphanumeric
+  # as they will be passed via cli args or env vars
+  podman:
+    pterodactyl_mysql:
+    pterodactyl_mysql_root:
+    # Hashids salt should be 20 characters and alphanumeric
+    pterodactyl_hashids:
+    pterodactyl_redis:
+
+    pterodactyl_db_root:
+
+  # Admin credentials for panel. All fields are required
+  admin:
+    email: admin@example.com
+    username: admin
+    first_name: Panel
+    last_name: Administrator
+    password:
+
+  location:
+    # Wings location identifier
+    short: us1
+    # Description (not required)
+    long:
+  
+  # If you're using a reverse proxy (true/false)
+  proxy: false
+  node:
+    # Node name
+    name: node
+    # Description (not required)
+    description:
+    # It's best to keep these at their defaults
+    public: true
+    maintenance: false
+    # Max memory/disk (MiB) and overallocation (%)
+    # Setting overallocation to -1 disables limit
+    max_memory:
+    overallocate_memory:
+    max_disk:
+    overallocate_disk:
+    # Upload filesize in MiB. It's usually best to
+    # keep the variables belo at their defaults
+    upload_size: 100
+    sftp_port: 2022
+    base_folder: /var/lib/pterodactyl/volumes
+  
+  # It's usually okay to keep these defaults,
+  # unless it overlaps with another network
+  network:
+    interface: 172.18.0.1
+    subnet_v4: 172.18.0.0/16
+    gateway_v4: 172.18.0.1
+    subnet_v6: fdba:17c8:6c94::/64
+    gateway_v6: fdba:17c8:6c94::1011
+
+# Configured for cloudflare
+ddclient:
+  # Needs to be granted Zone:DNS:Read and Zone:DNS:Write
+  cloudflare_api_token:
+  zone: example.com
+  domains: example.com,sub.example.com

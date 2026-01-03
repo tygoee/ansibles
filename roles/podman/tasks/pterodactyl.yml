@@ -8,29 +8,32 @@
         dest: "{{ user.home }}/.config/containers/systemd/"
         mode: "644"
 
-    - name: Copy templated pterodactyl container override file
-      vars:
-        panel_host: "{{ secrets.pterodactyl.panel_host }}"
-        wings_host: "{{ secrets.pterodactyl.wings_host }}"
-      ansible.builtin.template:
-        src: quadlets/pterodactyl/override.conf
-        dest: "{{ user.home }}/.config/containers/systemd/pterodactyl.pod.d/"
+    - name: Create pterodactyl container override directory
+      ansible.builtin.file:
+        path: "{{ user.home }}/.config/containers/systemd/pterodactyl.pod.d/"
+        state: directory
+        mode: "755"
+
+    - name: Create pterodactyl container override file
+      ansible.builtin.copy:
+        content: |
+          [Service]
+          Environment=PANEL_HOST={{ pterodactyl.panel_host }}
+          Environment=WINGS_HOST={{ pterodactyl.wings_host }}
+        dest: "{{ user.home }}/.config/containers/systemd/pterodactyl.pod.d/override.conf"
         mode: "644"
 
-    - name: Copy templated pterodactyl environment files
-      vars:
-        app_url: "{{ secrets.pterodactyl.app_url }}"
+    - name: Copy templated pterodactyl environment file
       ansible.builtin.template:
         src: quadlets/pterodactyl/pterodactyl.env
         dest: "{{ user.home }}/.config/containers/environment/"
         mode: "644"
 
-
     - name: Create pterodactyl podman secrets
       containers.podman.podman_secret:
         name: "{{ item.key }}"
         data: "{{ item.value }}"
-      loop: "{{ secrets.pterodactyl.podman | dict2items }}"
+      loop: "{{ pterodactyl.podman | dict2items }}"
       no_log: true
 
     - name: Enable the podman socket for pterodactyl
@@ -41,17 +44,27 @@
         enabled: true
         state: started
 
+    # For some reason the containers fail to pull images
+    # when started with a systemd pod
+    - name: Pull all pterodactyl container images
+      containers.podman.podman_image:
+        name: "{{ item }}"
+      loop:
+        - docker.io/library/mariadb:latest
+        - docker.io/library/redis:alpine
+        - ghcr.io/pterodactyl/panel:latest
+        - ghcr.io/pterodactyl/wings:latest
+
     - name: Start the pterodactyl pod
       ansible.builtin.systemd_service:
         name: pterodactyl-pod
         scope: user
         state: started
 
-- name: Wait for volume creation
-  ansible.builtin.wait_for:
-    path: "{{ user.home }}/.local/share/containers/storage/volumes/pterodactyl-data/"
-    state: present
-    timeout: 30
+    - name: Create the pterodactyl-data volume
+      containers.podman.podman_volume:
+        state: present
+        name: pterodactyl-data
 
 - name: Make a symlink from /var/lib/pterodactyl
   ansible.builtin.file:
@@ -63,9 +76,53 @@
   become: true
   become_user: "{{ user.name }}"
   block:
-    - name: Create pterodactyl panel admin
+    - name: Wait for pterodactyl mariadb initialization
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv:
+          - mariadb-admin
+          - ping
+          - "--user=pterodactyl"
+          - "--password={{ pterodactyl.podman.pterodactyl_mysql }}"
+      register: mariadb_ready
+      retries: 10
+      delay: 3
+      until: mariadb_ready.rc == 0
+      changed_when: false
+      no_log: true
+
+    - name: Wait for pterodactyl panel database setup
+      containers.podman.podman_container_exec:
+        name: pterodactyl-panel
+        argv:
+          - /usr/local/bin/php
+          - artisan
+          - migrate:status
+          - --pending
+          - --no-ansi
+      register: migrate_status
+      retries: 10
+      delay: 5
+      until: migrate_status.stdout | trim == 'INFO  No pending migrations.'
+      changed_when: false
+
+    # The mysql module isn't used because that would require opening a port, restarting the pod,
+    # installing python modules on the remote and then closing the port and restarting again.
+    # When connecting with the container the connection method is the issue, and python modules are still needed
+    - name: Check if pterodactyl admin user already exists
       vars:
-        admin: "{{ secrets.pterodactyl.admin }}"
+        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM users WHERE username = '{{ pterodactyl.admin.username }}';"]
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv: "{{ podman_pterodactyl_querydb + sql_query }}"
+      register: admin_exists
+      changed_when: false
+      no_log: true
+
+    - name: Create pterodactyl panel admin
+      when: not admin_exists.stdout | trim | bool
+      vars:
+        admin: "{{ pterodactyl.admin }}"
       containers.podman.podman_container_exec:
         name: pterodactyl-panel
         argv:
@@ -78,7 +135,182 @@
           - "--name-last={{ admin.last_name }}"
           - "--password={{ admin.password }}"
           - "--admin=1"
-      register: output
-      changed_when: output.rc == 0
-      failed_when: false
+          - "--no-interaction"
       no_log: true
+
+    - name: Check if pterodactyl location already exists
+      vars:
+        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM locations WHERE short = '{{ pterodactyl.location.short }}';"]
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv: "{{ podman_pterodactyl_querydb + sql_query }}"
+      register: location_exists
+      changed_when: false
+      no_log: true
+
+    - name: Create pterodactyl panel location
+      when: not location_exists.stdout | trim | bool
+      vars:
+        location: "{{ pterodactyl.location }}"
+      containers.podman.podman_container_exec:
+        name: pterodactyl-panel
+        argv:
+          - /usr/local/bin/php
+          - artisan
+          - p:location:make
+          - "--short={{ location.short }}"
+          - "--long={{ location.long }}"
+          - "--no-interaction"
+
+    - name: Get pterodactyl location id
+      vars:
+        sql_query: ["--execute=SELECT id FROM locations WHERE short = '{{ pterodactyl.location.short }}' ORDER BY id DESC LIMIT 1;"]
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv: "{{ podman_pterodactyl_querydb + sql_query }}"
+      register: location
+      changed_when: false
+      no_log: true
+
+    - name: Check if pterodactyl node already exists
+      vars:
+        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM nodes WHERE name = '{{ pterodactyl.node.name }}';"]
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv: "{{ podman_pterodactyl_querydb + sql_query }}"
+      register: node_exists
+      changed_when: false
+      no_log: true
+
+    - name: Create pterodactyl node
+      when: not node_exists.stdout | trim | bool
+      vars:
+        node: "{{ pterodactyl.node }}"
+      containers.podman.podman_container_exec:
+        name: pterodactyl-panel
+        argv:
+          - /usr/local/bin/php
+          - artisan
+          - p:node:make
+          - "--name={{ node.name }}"
+          - "--description={{ node.description }}"
+          - "--locationId={{ location.stdout | trim }}"
+          - "--fqdn={{ pterodactyl.wings_host if pterodactyl.proxy else 'localhost' }}"
+          - "--public={{ 1 if node.public else 0 }}"
+          - "--scheme={{ 'https' if pterodactyl.proxy else 'http' }}"
+          - "--proxy={{ 1 if pterodactyl.proxy else 0 }}"
+          - "--maintenance={{ 1 if node.maintenance else 0 }}"
+          - "--maxMemory={{ node.max_memory }}"
+          - "--overallocateMemory={{ node.overallocate_memory }}"
+          - "--maxDisk={{ node.max_disk }}"
+          - "--overallocateDisk={{ node.overallocate_disk }}"
+          - "--uploadSize={{ node.upload_size }}"
+          - "--daemonListeningPort={{ 443 if pterodactyl.proxy else 8080 }}"
+          - "--daemonSFTPPort={{ node.sftp_port }}"
+          - "--daemonBase={{ node.base_folder }}"
+          - "--no-interaction"
+
+    - name: Get pterodactyl node id
+      vars:
+        sql_query: ["--execute=SELECT id FROM nodes WHERE name = '{{ pterodactyl.node.name }}' ORDER BY id DESC LIMIT 1;"]
+      containers.podman.podman_container_exec:
+        name: pterodactyl-mariadb
+        argv: "{{ podman_pterodactyl_querydb + sql_query }}"
+      register: node
+      changed_when: false
+      no_log: true
+
+    - name: Get pterodactyl node configuration
+      containers.podman.podman_container_exec:
+        name: pterodactyl-panel
+        argv:
+          - /usr/local/bin/php
+          - artisan
+          - p:node:configuration
+          - "{{ node.stdout | trim }}"
+      register: node_configuration
+      changed_when: false
+
+    - name: Create the pterodactyl-config volume
+      containers.podman.podman_volume:
+        state: present
+        name: pterodactyl-config
+
+    - name: Copy pterodactyl node configuration to wings
+      vars:
+        network: "{{ pterodactyl.network }}"
+      ansible.builtin.copy:
+        content: |
+          {{ node_configuration.stdout | trim }}
+          docker:
+            network:
+              interface: {{ network.interface }}
+              name: pterodactyl_nw
+              driver: bridge
+              network_mode: pterodactyl_nw
+              interfaces:
+                v4:
+                  subnet: {{ network.subnet_v4 }}
+                  gateway: {{ network.gateway_v4 }}
+                v6:
+                  subnet: {{ network.subnet_v6 }}
+                  gateway: {{ network.gateway_v6 }}
+            log_config:
+              type: json_file
+        dest: "{{ user.home }}/.local/share/containers/storage/volumes/pterodactyl-config/_data/config.yml"
+        mode: "644"
+
+    - name: Start pterodactyl wings container
+      ansible.builtin.systemd_service:
+        name: pterodactyl-wings
+        scope: user
+        state: started
+
+    - name: Get pterodactyl cgroup directory
+      ansible.builtin.slurp:
+        src: /proc/self/cgroup
+      register: cgroup
+
+    - name: Get pterodactyl cgroup controllers
+      vars:
+        cgroup_dir: "{{ cgroup.content | b64decode | trim | split(':') | last }}"
+      ansible.builtin.slurp:
+        src: "/sys/fs/cgroup/{{ cgroup_dir }}/cgroup.controllers"
+      register: cgroup_controllers
+
+    - name: Parse pterodactyl cgroup controllers
+      ansible.builtin.set_fact:
+        cgroup_controller_list: "{{ cgroup_controllers.content | b64decode | trim | split(' ') }}"
+
+- name: Create systemd user override directory for pterodactyl
+  when: "'io' not in cgroup_controller_list"
+  ansible.builtin.file:
+    path: "/etc/systemd/system/user@{{ user.uid }}.service.d/"
+    state: directory
+    mode: "755"
+
+- name: Delegate io cgroup controller to pterodactyl user
+  when: "'io' not in cgroup_controller_list"
+  ansible.builtin.copy:
+    content: |
+      [Service]
+      Delegate={{ cgroup_controllers.content | b64decode | trim }} io
+    dest: "/etc/systemd/system/user@{{ user.uid }}.service.d/delegate.conf"
+    mode: "644"
+
+- name: Reload and reexec system systemd for pterodactyl cgroup delegation
+  when: "'io' not in cgroup_controller_list"
+  ansible.builtin.systemd:
+    daemon_reexec: true
+    daemon-reload: true
+
+- name: Log in as the {{ user.name }} user
+  become: true
+  become_user: "{{ user.name }}"
+  block:
+    - name: Reload and reexec user systemd for pterodactyl cgroup delegation
+      when: "'io' not in cgroup_controller_list"
+      ansible.builtin.systemd:
+        daemon_reexec: true
+        daemon-reload: true
+        scope: user

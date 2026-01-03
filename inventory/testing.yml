@@ -1,6 +1,0 @@
-# Testing VM (added in /etc/hosts)
-all:
-  hosts:
-    almalinuxvm:
-      ansible_connection: ssh
-      ansible_user: almalinux

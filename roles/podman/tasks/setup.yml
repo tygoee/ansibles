@@ -16,17 +16,6 @@
           - "{{ user.name }}"
         creates: "/var/lib/systemd/linger/{{ user.name }}"
 
-    - name: Create quadlet and environment directory for the {{ user.name }} user
-      ansible.builtin.file:
-        path: "{{ item }}"
-        state: directory
-        mode: "755"
-        owner: "{{ user.name }}"
-        group: "{{ user.group }}"
-      loop:
-        - "{{ user.home }}/.config/containers/systemd/"
-        - "{{ user.home }}/.config/containers/environment/"
-
     - name: Mark the {{ user.name }} user initialized
       ansible.builtin.set_fact:
         podman_initialized_users: "{{ podman_initialized_users + [user.name] }}"

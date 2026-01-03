@@ -1,3 +1,12 @@
 # Internal
 # Tracks users which have been set up
 podman_initialized_users: []
+
+# Arguments passed to query pterodactyl mariadb
+podman_pterodactyl_querydb:
+  - /usr/bin/mariadb
+  - "--user=pterodactyl"
+  - "--password={{ pterodactyl.podman.pterodactyl_mysql }}"
+  - "--database=panel"
+  - "--batch"
+  - "--skip-column-names"
