@@ -20,5 +20,5 @@
       ansible.builtin.set_fact:
         podman_initialized_users: "{{ podman_initialized_users + [user.name] }}"
 
-- name: Install {{ container_name }} container
+- name: Install the {{ container_name }} container
   ansible.builtin.include_tasks: "{{ container_name }}.yml"

@@ -1,11 +1,17 @@
 # Rename this file to config.yml and fill in the required configuration
 pterodactyl:
+  # If you're using a reverse proxy (true/false)
+  proxy: false
+
   # Panel url/ip, also include the scheme (http(s)://)
   # and the port if it isn't 80 (http) or 443 (https)
   app_url: http://x.x.x.x:8000/
   # No scheme/port, set both to host.containers.internal when not using a proxy
   panel_host: host.containers.internal
   wings_host: host.containers.internal
+  # Wings node domain/ip, remotes have to be able to connect to this,
+  # when using a proxy set this be the same as wings_host
+  node_fqdn: x.x.x.x
 
   # All podman secrets should preferably be alphanumeric
   # as they will be passed via cli args or env vars
@@ -16,7 +22,9 @@ pterodactyl:
     pterodactyl_hashids:
     pterodactyl_redis:
 
+    # Only required for database
     pterodactyl_db_root:
+    pterodactyl_db:
 
   # Admin credentials for panel. All fields are required
   admin:
@@ -31,9 +39,7 @@ pterodactyl:
     short: us1
     # Description (not required)
     long:
-  
-  # If you're using a reverse proxy (true/false)
-  proxy: false
+
   node:
     # Node name
     name: node
@@ -53,7 +59,7 @@ pterodactyl:
     upload_size: 100
     sftp_port: 2022
     base_folder: /var/lib/pterodactyl/volumes
-  
+
   # It's usually okay to keep these defaults,
   # unless it overlaps with another network
   network:
@@ -62,6 +68,15 @@ pterodactyl:
     gateway_v4: 172.18.0.1
     subnet_v6: fdba:17c8:6c94::/64
     gateway_v6: fdba:17c8:6c94::1011
+
+  # If a database should be setup (true/false)
+  # The database itself isn't created because there's not a simple command-line way for it.
+  # Create one via Databases > Create New:
+  #   Host: pterodactyl-db
+  #   Port: 3310
+  #   Username: pterodactyl
+  #   Password: {{ pterodactyl.podman.pterodactyl_db }}
+  database: true
 
 # Configured for cloudflare
 ddclient:

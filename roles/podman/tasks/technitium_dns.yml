@@ -1,4 +1,4 @@
-- name: Log in as the {{ user.name }} user
+- name: Log in as the dns-server user
   become: true
   become_user: "{{ user.name }}"
   block:

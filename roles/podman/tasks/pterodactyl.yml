@@ -1,4 +1,4 @@
-- name: Log in as the {{ user.name }} user
+- name: Log in as the pterodactyl user
   become: true
   become_user: "{{ user.name }}"
   block:
@@ -38,7 +38,7 @@
 
     - name: Enable the podman socket for pterodactyl
       ansible.builtin.systemd:
-        daemon_reload: true
+        daemon-reload: true
         name: podman.socket
         scope: user
         enabled: true
@@ -72,7 +72,7 @@
     dest: "/var/lib/pterodactyl"
     state: link
 
-- name: Log in as the {{ user.name }} user
+- name: Log in as the pterodactyl user
   become: true
   become_user: "{{ user.name }}"
   block:
@@ -111,7 +111,7 @@
     # When connecting with the container the connection method is the issue, and python modules are still needed
     - name: Check if pterodactyl admin user already exists
       vars:
-        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM users WHERE username = '{{ pterodactyl.admin.username }}';"]
+        sql_query: ["--execute=SELECT 1 FROM users WHERE username = '{{ pterodactyl.admin.username }}' LIMIT 1;"]
       containers.podman.podman_container_exec:
         name: pterodactyl-mariadb
         argv: "{{ podman_pterodactyl_querydb + sql_query }}"
@@ -140,7 +140,7 @@
 
     - name: Check if pterodactyl location already exists
       vars:
-        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM locations WHERE short = '{{ pterodactyl.location.short }}';"]
+        sql_query: ["--execute=SELECT 1 FROM locations WHERE short = '{{ pterodactyl.location.short }}' LIMIT 1;"]
       containers.podman.podman_container_exec:
         name: pterodactyl-mariadb
         argv: "{{ podman_pterodactyl_querydb + sql_query }}"
@@ -174,7 +174,7 @@
 
     - name: Check if pterodactyl node already exists
       vars:
-        sql_query: ["--execute=SELECT COUNT(*) > 0 FROM nodes WHERE name = '{{ pterodactyl.node.name }}';"]
+        sql_query: ["--execute=SELECT 1 FROM nodes WHERE name = '{{ pterodactyl.node.name }}' LIMIT 1;"]
       containers.podman.podman_container_exec:
         name: pterodactyl-mariadb
         argv: "{{ podman_pterodactyl_querydb + sql_query }}"
@@ -195,7 +195,7 @@
           - "--name={{ node.name }}"
           - "--description={{ node.description }}"
           - "--locationId={{ location.stdout | trim }}"
-          - "--fqdn={{ pterodactyl.wings_host if pterodactyl.proxy else 'localhost' }}"
+          - "--fqdn={{ pterodactyl.node_fqdn }}"
           - "--public={{ 1 if node.public else 0 }}"
           - "--scheme={{ 'https' if pterodactyl.proxy else 'http' }}"
           - "--proxy={{ 1 if pterodactyl.proxy else 0 }}"
@@ -256,9 +256,10 @@
                   subnet: {{ network.subnet_v6 }}
                   gateway: {{ network.gateway_v6 }}
             log_config:
-              type: json_file
+              type: json-file
         dest: "{{ user.home }}/.local/share/containers/storage/volumes/pterodactyl-config/_data/config.yml"
         mode: "644"
+        force: false
 
     - name: Start pterodactyl wings container
       ansible.builtin.systemd_service:
@@ -278,39 +279,88 @@
         src: "/sys/fs/cgroup/{{ cgroup_dir }}/cgroup.controllers"
       register: cgroup_controllers
 
-    - name: Parse pterodactyl cgroup controllers
-      ansible.builtin.set_fact:
-        cgroup_controller_list: "{{ cgroup_controllers.content | b64decode | trim | split(' ') }}"
+- name: Delegate and apply cgroup controller to the pterodactyl user
+  when: "'io' not in cgroup_controllers.content | b64decode | trim | split(' ')"
+  block:
+    - name: Create systemd user override directory for pterodactyl
+      ansible.builtin.file:
+        path: "/etc/systemd/system/user@{{ user.uid }}.service.d/"
+        state: directory
+        mode: "755"
 
-- name: Create systemd user override directory for pterodactyl
-  when: "'io' not in cgroup_controller_list"
-  ansible.builtin.file:
-    path: "/etc/systemd/system/user@{{ user.uid }}.service.d/"
-    state: directory
-    mode: "755"
+    - name: Delegate io cgroup controller to pterodactyl user
+      ansible.builtin.copy:
+        content: |
+          [Service]
+          Delegate={{ cgroup_controllers.content | b64decode | trim }} io
+        dest: "/etc/systemd/system/user@{{ user.uid }}.service.d/delegate.conf"
+        mode: "644"
 
-- name: Delegate io cgroup controller to pterodactyl user
-  when: "'io' not in cgroup_controller_list"
-  ansible.builtin.copy:
-    content: |
-      [Service]
-      Delegate={{ cgroup_controllers.content | b64decode | trim }} io
-    dest: "/etc/systemd/system/user@{{ user.uid }}.service.d/delegate.conf"
-    mode: "644"
+    - name: Reload and reexec system systemd for pterodactyl cgroup delegation
+      ansible.builtin.systemd:
+        daemon-reexec: true
+        daemon-reload: true
 
-- name: Reload and reexec system systemd for pterodactyl cgroup delegation
-  when: "'io' not in cgroup_controller_list"
-  ansible.builtin.systemd:
-    daemon_reexec: true
-    daemon-reload: true
+    - name: Reload and reexec user systemd for pterodactyl cgroup delegation
+      become: true
+      become_user: "{{ user.name }}"
+      ansible.builtin.systemd:
+        daemon-reexec: true
+        daemon-reload: true
+        scope: user
 
-- name: Log in as the {{ user.name }} user
+- name: Set up the database (optional)
+  when: pterodactyl.database
   become: true
   become_user: "{{ user.name }}"
   block:
-    - name: Reload and reexec user systemd for pterodactyl cgroup delegation
-      when: "'io' not in cgroup_controller_list"
-      ansible.builtin.systemd:
-        daemon_reexec: true
-        daemon-reload: true
+    - name: Copy pterodactyl-db container file
+      ansible.builtin.copy:
+        src: quadlets/pterodactyl/optional/pterodactyl-db.container
+        dest: "{{ user.home }}/.config/containers/systemd/"
+        mode: "644"
+
+    - name: Start the pterodactyl-db container
+      ansible.builtin.systemd_service:
+        name: pterodactyl-db
         scope: user
+        state: started
+        daemon-reload: true
+
+    - name: Wait for pterodactyl-db mariadb initialization
+      containers.podman.podman_container_exec:
+        name: pterodactyl-db
+        argv:
+          - /usr/bin/mariadb-admin
+          - ping
+          - "--user=pterodactyl"
+          - "--password={{ pterodactyl.podman.pterodactyl_db }}"
+      register: mariadb_ready
+      retries: 10
+      delay: 3
+      until: mariadb_ready.rc == 0
+      changed_when: false
+      no_log: true
+
+    # Somehow the initialization sometimes still isn't finished
+    - name: Wait for pterodactyl-db root user creation
+      ansible.builtin.pause:
+        seconds: 3
+
+    - name: Grant pterodactyl database user all permissions
+      containers.podman.podman_container_exec:
+        name: pterodactyl-db
+        argv:
+          - /usr/bin/mariadb
+          - "--password={{ pterodactyl.podman.pterodactyl_db_root }}"
+          - "--execute=GRANT ALL PRIVILEGES ON *.* TO 'pterodactyl'@'%' WITH GRANT OPTION;"
+      register: admin_exists
+      changed_when: false
+      no_log: true
+
+    # The database itself isn't created because there's not a simple command-line way for it.
+    # Create one via Databases > Create New:
+    #   Host: pterodactyl-db
+    #   Port: 3310
+    #   Username: pterodactyl
+    #   Password: {{ pterodactyl.podman.pterodactyl_db }}
