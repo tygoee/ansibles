@@ -1,0 +1,141 @@
+images:
+  almalinux: AlmaLinux-10-GenericCloud-latest.x86_64.qcow2
+
+templates:
+  almalinux: &almalinux
+    node: "{{ node }}"
+    onboot: true
+
+    # vga: virtio
+    machine: q35
+    bios: ovmf
+    efidisk0:
+      efitype: 4m
+      format: raw
+      pre_enrolled_keys: true
+      storage: local-lvm
+    scsihw: virtio-scsi-single
+    agent: 1
+    tpmstate0:
+      storage: local-lvm
+      version: "2.0"
+
+    scsi:
+      scsi0: "local-lvm:0,import-from=local:import/{{ images.almalinux }},iothread=on"
+
+    sockets: 1
+    cores: 4
+    cpu: host
+    numa_enabled: true
+
+    memory: 4096
+    # balloon: 2048
+
+    net:
+      net0: "virtio,bridge=vmbr0,firewall=1"
+
+    hotplug: network,disk,cpu,memory,usb
+
+    ide:
+      ide2: "local-lvm:cloudinit,format=raw"
+    sshkeys: "{{ authorized_keys }}"
+    ciupgrade: true
+
+vmids:
+  almalinux_infra: 101
+  almalinux_main: 102
+  almalinux_media: 103
+
+machines:
+  almalinux_infra:
+    kvm:
+      <<: *almalinux
+      vmid: "{{ vmids.almalinux_infra }}"
+      name: almalinux-infra
+
+      ciuser: almalinux
+      cipassword: "{{ passwords.almalinux_infra }}"
+      ipconfig:
+        ipconfig0: "ip=192.168.16.{{ vmids.almalinux_infra }}/24,gw=192.168.16.1,ip6=auto"
+
+    firewall:
+      level: vm
+      vmid: "{{ vmids.almalinux_infra }}"
+      rules:
+        - type: in
+          action: ACCEPT
+          macro: SSH
+          pos: 0
+          enable: true
+
+    disk:
+      when: >-
+        proxmox_vms[{{ vmids.almalinux_infra }}].config.scsi0 | trim ==
+        'local-lvm:vm-{{ vmids.almalinux_infra }}-disk-1,iothread=1,size=10G'
+      set:
+        vmid: "{{ vmids.almalinux_infra }}"
+        disk: scsi0
+        size: +30G
+        state: resized
+
+  almalinux_main:
+    kvm:
+      <<: *almalinux
+      vmid: "{{ vmids.almalinux_main }}"
+      name: almalinux-main
+
+      ciuser: almalinux
+      cipassword: "{{ passwords.almalinux_main }}"
+      ipconfig:
+        ipconfig0: "ip=192.168.16.{{ vmids.almalinux_main }}/24,gw=192.168.16.1,ip6=auto"
+
+    firewall:
+      level: vm
+      vmid: "{{ vmids.almalinux_main }}"
+      rules:
+        - type: in
+          action: ACCEPT
+          macro: SSH
+          pos: 0
+          enable: true
+
+    disk:
+      when: >-
+        proxmox_vms[{{ vmids.almalinux_main }}].config.scsi0 | trim ==
+        'local-lvm:vm-{{ vmids.almalinux_main }}-disk-1,iothread=1,size=10G'
+      set:
+        vmid: "{{ vmids.almalinux_main }}"
+        disk: scsi0
+        size: +30G
+        state: resized
+
+  almalinux_media:
+    kvm:
+      <<: *almalinux
+      vmid: "{{ vmids.almalinux_media }}"
+      name: almalinux-media
+
+      ciuser: almalinux
+      cipassword: "{{ passwords.almalinux_media }}"
+      ipconfig:
+        ipconfig0: "ip=192.168.16.{{ vmids.almalinux_media }}/24,gw=192.168.16.1,ip6=auto"
+
+    firewall:
+      level: vm
+      vmid: "{{ vmids.almalinux_media }}"
+      rules:
+        - type: in
+          action: ACCEPT
+          macro: SSH
+          pos: 0
+          enable: true
+
+    disk:
+      when: >-
+        proxmox_vms[{{ vmids.almalinux_media }}].config.scsi0 | trim ==
+        'local-lvm:vm-{{ vmids.almalinux_media }}-disk-1,iothread=1,size=10G'
+      set:
+        vmid: "{{ vmids.almalinux_media }}"
+        disk: scsi0
+        size: +30G
+        state: resized

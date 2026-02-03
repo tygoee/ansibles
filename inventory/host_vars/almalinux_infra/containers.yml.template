@@ -1,0 +1,6 @@
+# Configured for cloudflare
+ddclient:
+  # Needs to be granted Zone:DNS:Read and Zone:DNS:Write
+  cloudflare_api_token:
+  zone: example.com
+  domains: example.com,sub.example.com

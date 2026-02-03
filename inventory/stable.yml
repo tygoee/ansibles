@@ -1,5 +1,0 @@
-# The host managing ansible is the only host for now
-all:
-  hosts:
-    localhost:
-      ansible_connection: ansible.builtin.local

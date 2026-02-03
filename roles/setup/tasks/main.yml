@@ -1,4 +1,4 @@
-- name: Install some packages
+- name: Install setup packages
   become: true
   ansible.builtin.dnf:
     name: "{{ setup_packages }}"

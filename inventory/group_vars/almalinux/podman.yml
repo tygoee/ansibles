@@ -1,0 +1,6 @@
+# IMPORTANT: some containers will fail if you don't set a valid timezone
+# Region/City - https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+timezone: Europe/Amsterdam
+
+# Empty placeholder list of containers to install, override in host_vars
+containers: []

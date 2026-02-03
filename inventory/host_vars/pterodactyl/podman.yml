@@ -1,0 +1,13 @@
+# Containers to install
+containers:
+  - pterodactyl
+
+# Usually user=group and uid=gid. A user always needs the same uid
+# Multiple apps with the same user/uid configuration are allowed
+users:
+  pterodactyl:
+    name: pterodactyl
+    group: pterodactyl
+    uid: 2000
+    gid: 2000
+    home: /home/pterodactyl

@@ -1,6 +1,0 @@
-# Development VM (added in /etc/hosts)
-all:
-  hosts:
-    almalinuxvm:
-      ansible_connection: ansible.builtin.ssh
-      ansible_user: almalinux

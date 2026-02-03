@@ -1,0 +1,17 @@
+# These will be passed to all VMs
+authorized_keys: |
+  ssh-ed25519 ... other@machine
+  ssh-ed25519 ... root@toolbox
+
+auth:
+  api_user: root@pam
+  api_token_id: toolbox
+  api_token_secret:
+  api_host:
+
+node: proxmox
+
+passwords:
+  almalinux_infra:
+  almalinux_main:
+  almalinux_media:
