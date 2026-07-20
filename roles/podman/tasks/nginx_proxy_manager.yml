@@ -1,10 +1,10 @@
-- name: "Log in as the {{ container.name }} user"
+- name: Log in as the nginx_proxy_manager user
   become: true
   become_user: "{{ user.name }}"
   vars:
     container:
-      name: dns-server
-      file: technitium-dns/dns-server
+      name: nginx_proxy_manager
+      file: nginx-proxy-manager/nginx-proxy-manager
       envfile: true
   block:
     - name: "Copy {{ container.name }} container files"

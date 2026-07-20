@@ -9,18 +9,20 @@ Most configuration values are in `inventory/`. Ones usually not needing configur
 
 # Dependencies
 
-Run the following on the ansible host to install the dependencies required for proxmox playbooks
+Run the following on the ansible host (here configured to be a 'toolbox' lxc inside proxmox) to install the dependencies required for proxmox playbooks
 
 ```sh
 ansible-galaxy collection install community.proxmox
 
 # Debian-based
-apt install python3-proxmoxer
+apt install -y python3-proxmoxer
 # RHEL-based
-dnf install python3-pip
+dnf install -y python3-pip
 python3 -m pip install proxmoxer requests
 ```
 
 # Running
+
+Before creating new virtual machines, generate the `machines.json` file with `python3 inventory/host_vars/toolbox/machines.py`
 
 To run the playbooks, run `ansible-playbook playbooks/<playbook>.yml`

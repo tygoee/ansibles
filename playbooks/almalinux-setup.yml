@@ -1,3 +1,4 @@
+# Wait some time (like a minute or two) before the vm's are initialised before running this
 - name: Configure almalinux systems
   hosts: almalinux
   roles:

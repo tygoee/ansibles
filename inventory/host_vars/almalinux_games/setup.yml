@@ -1,0 +1,2 @@
+setup_packages_host:
+  - java-25-openjdk-headless

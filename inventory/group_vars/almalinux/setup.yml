@@ -1,4 +1,4 @@
-setup_packages:
+setup_packages_group:
   - acl # needed for ansible changing users
   - systemd-container # for machinectl
   - bash-completion

@@ -1,0 +1,9 @@
+usev4=no
+usev6=ifv6
+
+protocol=cloudflare,
+zone={{ zone }},
+ttl=1,
+login=token,
+password={{ cloudflare_api_token }}
+{{ domains }}

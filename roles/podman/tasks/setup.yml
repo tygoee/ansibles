@@ -6,6 +6,7 @@
         name: "{{ user.name }}"
         uid: "{{ user.uid }}"
         home: "{{ user.home }}"
+      when: user.uid != 0
 
     # Loginctl is from systemd, installed by default
     - name: Enable linger for the {{ user.name }} user
@@ -15,6 +16,7 @@
           - enable-linger
           - "{{ user.name }}"
         creates: "/var/lib/systemd/linger/{{ user.name }}"
+      when: user.uid != 0
 
     - name: Mark the {{ user.name }} user initialized
       ansible.builtin.set_fact:

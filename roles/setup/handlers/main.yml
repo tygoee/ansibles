@@ -1,0 +1,13 @@
+- name: Update grub config
+  become: true
+  ansible.builtin.command:
+    argv:
+      - "/usr/sbin/grub2-mkconfig"
+      - "-o"
+      - "/boot/grub2/grub.cfg"
+  changed_when: true
+
+- name: Reboot machines
+  become: true
+  ansible.builtin.reboot:
+    reboot_timeout: 60

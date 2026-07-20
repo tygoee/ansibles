@@ -1,4 +1,4 @@
-toolbox:
+all:
   hosts:
     toolbox:
       ansible_host: localhost
@@ -7,17 +7,20 @@ toolbox:
 hypervisor:
   hosts:
     proxmox:
-      ansible_host: 192.168.16.2
+      ansible_host: x.x.x.x
       ansible_user: root
 
 almalinux:
   hosts:
     almalinux_infra:
-      ansible_host: 192.168.16.101
+      ansible_host: x.x.x.x
       ansible_user: almalinux
     almalinux_main:
-      ansible_host: 192.168.16.102
+      ansible_host: x.x.x.x
       ansible_user: almalinux
     almalinux_media:
-      ansible_host: 192.168.16.103
+      ansible_host: x.x.x.x
+      ansible_user: almalinux
+    almalinux_games:
+      ansible_host: x.x.x.x
       ansible_user: almalinux

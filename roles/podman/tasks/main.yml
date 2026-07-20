@@ -6,6 +6,18 @@
         name: podman
         state: present
 
+    - name: Create subuid entry for containers user
+      ansible.builtin.lineinfile:
+        path: /etc/subuid
+        regexp: "^containers:.*$"
+        line: "containers:100000:65536"
+
+    - name: Create subgid entry for containers user
+      ansible.builtin.lineinfile:
+        path: /etc/subgid
+        regexp: "^containers:.*$"
+        line: "containers:100000:65536"
+
     - name: Install all containers
       ansible.builtin.include_tasks: "setup.yml"
       vars:

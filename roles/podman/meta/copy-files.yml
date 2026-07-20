@@ -1,0 +1,20 @@
+- name: "Copy {{ container.name }} container files"
+  become: true
+  become_user: "{{ user.name }}"
+  block:
+    - name: "Copy {{ container.name }} container file"
+      ansible.builtin.copy:
+        src: "quadlets/{{ container.file }}.container"
+        dest: "{{ '/etc/containers/systemd/' if user.uid == 0 else user.home + '/.config/containers/systemd/' }}"
+        mode: "644"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+
+    - name: "Copy templated {{ container.name }} environment file"
+      ansible.builtin.template:
+        src: "quadlets/{{ container.file }}.env"
+        dest: "{{ '/etc/containers/environment/' if user.uid == 0 else user.home + '/.config/containers/environment/' }}"
+        mode: "644"
+        owner: "{{ user.name }}"
+        group: "{{ user.group }}"
+      when: container.envfile

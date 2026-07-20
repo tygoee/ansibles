@@ -1,5 +1,16 @@
-- name: Install setup packages
+- name: Setup almalinux
   become: true
-  ansible.builtin.dnf:
-    name: "{{ setup_packages }}"
-    state: present
+  block:
+    - name: Install setup packages
+      ansible.builtin.dnf:
+        name: "{{ setup_packages_group + (setup_packages_host | default([])) }}"
+        state: present
+
+    - name: Enable serial tty in grub defaults
+      ansible.builtin.lineinfile:
+        path: /etc/default/grub
+        regexp: "^GRUB_CMDLINE_LINUX="
+        line: 'GRUB_CMDLINE_LINUX="console=ttyS0,115200n8 console=tty1"'
+      notify:
+        - Update grub config
+        - Reboot machines

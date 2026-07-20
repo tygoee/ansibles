@@ -1,0 +1,26 @@
+# These will be passed to all VMs
+authorized_keys = \
+    """ssh-ed25519 ... other@machine
+ssh-ed25519 ... root@toolbox"""
+
+auth = {
+    "api_user": "root@pam",
+    "api_token_id": "toolbox",
+    "api_token_secret": "",
+    "api_host": ""
+}
+
+node = ""
+
+passwords = {
+    "almalinux-infra": "",
+    "almalinux-main": "",
+    "almalinux-media": "",
+    "almalinux-games": ""
+}
+
+
+# Edit the ip addresses here too
+def network(vmid: str | int): return {
+    "ipconfig0": f"ip=x.x.x.{vmid}/24,gw=x.x.x.1,ip6=auto"
+}

@@ -1,2 +1,3 @@
+*.py.template linguist-language=py
 *.yml.template linguist-language=YAML
 .ansible-lint linguist-language=YAML

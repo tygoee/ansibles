@@ -1,0 +1,46 @@
+- name: Setup proxmox
+  block:
+    - name: Create proxmox vms # noqa args[module]
+      community.proxmox.proxmox_kvm: "{{ auth | combine(item.kvm) }}"
+      loop: "{{ machines.values() }}"
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
+
+    - name: Enable the proxmox vm firewalls
+      ansible.builtin.uri:
+        url: "https://{{ auth.api_host }}:8006/api2/json/nodes/{{ node }}/qemu/{{ item.kvm.vmid }}/firewall/options"
+        method: PUT
+        headers:
+          Authorization: "PVEAPIToken={{ auth.api_user }}!{{ auth.api_token_id }}={{ auth.api_token_secret }}"
+        body:
+          enable: 1
+        body_format: json
+      loop: "{{ machines.values() }}"
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
+
+    - name: Setup the proxmox vm firewalls # noqa args[module]
+      community.proxmox.proxmox_firewall: "{{ auth | combine(item.firewall) }}"
+      loop: "{{ machines.values() }}"
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
+
+    - name: Get proxmox vm info # noqa args[module]
+      community.proxmox.proxmox_vm_info: "{{ auth | combine({'config': 'current'}) }}"
+      register: vm_info
+
+    - name: Perform proxmox vm disk operations # noqa args[module] jinja[spacing] no-jinja-when
+      community.proxmox.proxmox_disk: "{{ auth | combine(item.disk.set) }}"
+      loop: "{{ machines.values() }}"
+      vars:
+        # { vmid: { config: ... } }
+        proxmox_vms: "{{ dict(vm_info.proxmox_vms | map(attribute='vmid') | zip(vm_info.proxmox_vms)) }}"
+      when: "{{ item.disk.when }}" # the when statement uses {{ }} because it's evaluating text
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
+
+    - name: Start all proxmox vms # noqa args[module]
+      community.proxmox.proxmox_kvm: "{{ auth | combine({'vmid': item.kvm.vmid, 'state': 'started'}) }}"
+      loop: "{{ machines.values() }}"
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
