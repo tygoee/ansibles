@@ -12,7 +12,7 @@ Most configuration values are in `inventory/`. Ones usually not needing configur
 Run the following on the ansible host (here configured to be a 'toolbox' lxc inside proxmox) to install the dependencies required for proxmox playbooks
 
 ```sh
-ansible-galaxy collection install community.proxmox
+ansible-galaxy collection install community.proxmox containers.podman
 
 # Debian-based
 apt install -y python3-proxmoxer

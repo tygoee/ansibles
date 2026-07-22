@@ -1,11 +1,15 @@
-- name: "Log in as the {{ container.name }} user"
+- name: "Log in as the technitium_dns user"
   become: true
   become_user: "{{ user.name }}"
   vars:
     container:
       name: dns-server
-      file: technitium-dns/dns-server
-      envfile: true
+      folder: technitium-dns
+      files:
+        - dns-server.container
+      envfiles:
+        - dns-server.env
+      service: dns-server
   block:
     - name: "Copy {{ container.name }} container files"
       ansible.builtin.import_tasks: meta/copy-files.yml

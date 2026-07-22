@@ -2,19 +2,20 @@
   become: true
   become_user: "{{ user.name }}"
   block:
-    - name: "Copy {{ container.name }} container file"
+    - name: "Copy {{ container.name }} container files"
       ansible.builtin.copy:
-        src: "quadlets/{{ container.file }}.container"
+        src: "quadlets/{{ container.folder }}/{{ item }}"
         dest: "{{ '/etc/containers/systemd/' if user.uid == 0 else user.home + '/.config/containers/systemd/' }}"
         mode: "644"
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
+      loop: "{{ container.files }}"
 
-    - name: "Copy templated {{ container.name }} environment file"
+    - name: "Copy templated {{ container.name }} environment files"
       ansible.builtin.template:
-        src: "quadlets/{{ container.file }}.env"
+        src: "quadlets/{{ container.folder }}/{{ item }}"
         dest: "{{ '/etc/containers/environment/' if user.uid == 0 else user.home + '/.config/containers/environment/' }}"
         mode: "644"
         owner: "{{ user.name }}"
         group: "{{ user.group }}"
-      when: container.envfile
+      loop: "{{ container.envfiles }}"

@@ -4,3 +4,9 @@ ddclient:
   cloudflare_api_token:
   zone: example.com
   domains: example.com,sub.example.com
+
+authentik:
+  secret_key:
+  postgres:
+    password:
+  saml_enabled: true

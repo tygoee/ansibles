@@ -3,6 +3,6 @@
   become_user: "{{ user.name }}"
   ansible.builtin.systemd_service:
     daemon_reload: true
-    name: "{{ container.name }}"
+    name: "{{ container.service }}"
     scope: "{{ 'system' if user.uid == 0 else 'user' }}"
     state: started

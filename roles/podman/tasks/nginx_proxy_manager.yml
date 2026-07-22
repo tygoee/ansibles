@@ -3,9 +3,13 @@
   become_user: "{{ user.name }}"
   vars:
     container:
-      name: nginx_proxy_manager
-      file: nginx-proxy-manager/nginx-proxy-manager
-      envfile: true
+      name: nginx-proxy-manager
+      folder: nginx-proxy-manager
+      files:
+        - nginx-proxy-manager.container
+      envfiles:
+        - nginx-proxy-manager.env
+      service: nginx-proxy-manager
   block:
     - name: "Copy {{ container.name }} container files"
       ansible.builtin.import_tasks: meta/copy-files.yml

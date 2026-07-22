@@ -1,0 +1,22 @@
+- name: "Log in as the authentik user"
+  become: true
+  become_user: "{{ user.name }}"
+  vars:
+    container:
+      name: authentik
+      folder: authentik
+      files:
+        - containers/authentik-server.container
+        - containers/authentik-worker.container
+        - containers/authentik-postgres.container
+        - containers/authentik.network
+      envfiles:
+        - environment/authentik.env
+        - environment/authentik-postgres.env
+      service: authentik-server
+  block:
+    - name: "Copy {{ container.name }} container files"
+      ansible.builtin.import_tasks: meta/copy-files.yml
+
+    - name: "Start {{ container.name }} container"
+      ansible.builtin.import_tasks: meta/start-container.yml

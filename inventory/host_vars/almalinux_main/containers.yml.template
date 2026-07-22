@@ -1,0 +1,7 @@
+joplin:
+  # Access is restricted to this origin. Don't leave a trailing slash
+  url: https://example.com
+  postgres:
+    password:
+  saml_enabled: true
+  saml_slug: joplin

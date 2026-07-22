@@ -1,0 +1,37 @@
+- name: "Log in as the joplin_server user"
+  become: true
+  become_user: "{{ user.name }}"
+  vars:
+    container:
+      name: joplin-server
+      folder: joplin-server
+      files:
+        - containers/joplin-server.container
+        - containers/joplin-postgres.container
+        - containers/joplin-server.pod
+      envfiles:
+        - environment/joplin-server.env
+        - environment/joplin-postgres.env
+      service: joplin-server-pod
+  block:
+    - name: "Copy {{ container.name }} container files"
+      ansible.builtin.import_tasks: meta/copy-files.yml
+
+    - name: Create the joplin-config volume
+      containers.podman.podman_volume:
+        state: present
+        name: joplin-config
+      register: joplin_volume
+
+    - name: "Copy templated joplin service provider file"
+      ansible.builtin.template:
+        src: "templates/joplin-sp.j2"
+        dest: "{{ joplin_volume.volume.Mountpoint }}/joplin-sp.xml"
+        mode: "644"
+      when: joplin.saml_enabled
+
+    # joplin-idp.xml still has to be created manually
+    # Maybe install wget and fetch authentik/application/saml/joplin/metadata/
+
+    - name: "Start {{ container.name }} container"
+      ansible.builtin.import_tasks: meta/start-container.yml

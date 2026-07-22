@@ -1,10 +1,18 @@
 # Containers to install
 containers:
   - portainer
+  - joplin_server
 
 # Usually user=group and uid=gid. A user always needs the same uid
 # Multiple apps with the same user/uid configuration are allowed
 users:
+  root: &root
+    name: root
+    group: root
+    uid: 0
+    gid: 0
+    home: /root
+
   podman: &podman
     name: podman
     group: podman
@@ -14,3 +22,6 @@ users:
 
   portainer:
     <<: *podman
+
+  joplin_server:
+    <<: *root
