@@ -106,7 +106,7 @@ def almalinux_template(
 
 
 machines = {
-    "almalinux_infra": almalinux_template("almalinux-infra", 101, 40),
+    "almalinux_infra": almalinux_template("almalinux-infra", 101, 40, {"kvm": {"memory": "8192"}}),
     "almalinux_main": almalinux_template("almalinux-main", 102, 40),
     "almalinux_media": almalinux_template("almalinux-media", 103, 40, {"kvm": {"onboot": False}}),
     "almalinux_games": almalinux_template("almalinux-games", 104, 100, {"kvm": {"memory": "8192", "onboot": False}})

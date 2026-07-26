@@ -1,0 +1,70 @@
+# Part from unused task that was used to download harbor for template files
+- name: "Log in as the harbor user"
+  become: true
+  become_user: "{{ user.name }}"
+  block:
+    - name: Get latest harbor version
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/goharbor/harbor/releases/latest
+        return_content: true
+      register: harbor_release
+      when: harbor.version == 'auto'
+
+    - name: Set harbor version variable
+      ansible.builtin.set_fact:
+        harbor: "{{ harbor | combine({'version': harbor_release.json.tag_name}) }}"
+      when: harbor.version == 'auto'
+
+    - name: Create harbor install directory
+      ansible.builtin.file:
+        path: ~/harbor
+        state: directory
+        mode: "755"
+
+    - name: Download harbor offline installer
+      ansible.builtin.get_url:
+        url: "https://github.com/goharbor/harbor/releases/download/{{ harbor.version }}/harbor-offline-installer-{{ harbor.version }}.tgz"
+        dest: "~/harbor/harbor-offline-installer-{{ harbor.version }}.tgz"
+        mode: "644"
+      register: downloaded
+
+    - name: Extract harbor installer # noqa: no-handler
+      ansible.builtin.unarchive:
+        src: "~/harbor/harbor-offline-installer-{{ harbor.version }}.tgz"
+        dest: ~/harbor
+        remote_src: true
+      when: downloaded.changed # this takes pretty long so a dirty skip
+
+    - name: Import harbor images into podman # noqa: no-handler
+      containers.podman.podman_load:
+        input: "~/harbor/harbor/harbor.{{ harbor.version }}.tar.gz"
+      when: downloaded.changed # this takes really long and always returns changed
+
+    - name: Copy templated harbor.yml file
+      ansible.builtin.template:
+        src: templates/harbor.yml
+        dest: ~/harbor/harbor/harbor.yml
+        mode: "644"
+
+    - name: Create harbor config directory
+      ansible.builtin.file:
+        path: ~/harbor/harbor/common/config
+        state: directory
+        mode: "755"
+
+    - name: Create harbor data directory
+      ansible.builtin.file:
+        path: /var/lib/harbor
+        state: directory
+        mode: "755"
+
+    - name: Add line in harbor prepare script to pretend podman is docker
+      ansible.builtin.lineinfile:
+        path: ~/harbor/harbor/prepare
+        insertafter: "^#!/bin/bash$"
+        line: 'function docker { podman "$@"; }'
+
+    - name: Execute the harbor prepare script # noqa: no-changed-when
+      ansible.builtin.command:
+        cmd: ~/harbor/harbor/prepare --with-trivy
+        chdir: ~/harbor/harbor

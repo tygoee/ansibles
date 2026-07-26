@@ -1,0 +1,101 @@
+- name: "Log in as the harbor user"
+  become: true
+  become_user: "{{ user.name }}"
+  vars:
+    container:
+      name: harbor
+      folder: harbor
+      files:
+        - containers/harbor-core.container
+        - containers/harbor-db.container
+        - containers/harbor-exporter.container
+        - containers/harbor-jobservice.container
+        - containers/harbor-nginx.container
+        - containers/harbor-portal.container
+        - containers/harbor-redis.container
+        - containers/harbor-registry.container
+        - containers/harbor-registryctl.container
+        - containers/harbor-trivy-adapter.container
+        - containers/harbor.network
+      envfiles: []
+      service: harbor-core
+  block:
+    - name: "Copy {{ container.name }} container files"
+      ansible.builtin.import_tasks: meta/copy-files.yml
+
+    - name: Get latest harbor version
+      ansible.builtin.uri:
+        url: https://api.github.com/repos/goharbor/harbor/releases/latest
+        return_content: true
+      register: harbor_release
+      when: harbor.version == 'auto'
+
+    - name: Set harbor version variable
+      ansible.builtin.set_fact:
+        harbor: "{{ harbor | combine({'version': harbor_release.json.tag_name}) }}"
+      when: harbor.version == 'auto'
+
+    - name: Create harbor directories with owner 10000
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "10000"
+        group: "10000"
+        mode: "755"
+      loop:
+        - /var/lib/harbor
+        - /var/lib/harbor/ca_download
+        - /var/lib/harbor/job_logs
+        - /var/lib/harbor/registry
+        - /var/lib/harbor/trivy-adapter
+        - /var/lib/harbor/trivy-adapter/reports
+        - /var/lib/harbor/trivy-adapter/trivy
+
+    - name: Create harbor directories with owner 999
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: "999"
+        group: "999"
+        mode: "755"
+      loop:
+        - /var/lib/harbor/database
+        - /var/lib/harbor/redis
+
+    # CAUTION: this does not copy files that are modified here,
+    # partly because that would keep a loop modifying passwd
+    - name: Copy new files from harbor config directory
+      ansible.builtin.copy:
+        src: quadlets/harbor/config/
+        dest: /etc/harbor/
+        owner: "10000"
+        group: "10000"
+        mode: preserve
+        force: false
+
+    - name: Create harbor podman secrets
+      containers.podman.podman_secret:
+        name: "{{ item.key }}"
+        data: "{{ item.value }}"
+      loop: "{{ harbor.secrets | dict2items }}"
+      no_log: true
+
+    - name: Install httpd-tools for htpasswd harbor
+      ansible.builtin.dnf:
+        name: httpd-tools
+        state: present
+
+    - name: Check harbor registry file for registry user
+      ansible.builtin.stat:
+        path: /etc/harbor/registry/passwd
+      register: registry_passwd
+      changed_when: not registry_passwd.stat.exists or registry_passwd.stat.size == 0
+
+    - name: Create harbor registry user with htpasswd # noqa: no-changed-when
+      ansible.builtin.command:
+        cmd: htpasswd -ciB /etc/harbor/registry/passwd harbor_registry_user
+        stdin: "{{ harbor.secrets.harbor_registry }}"
+      when: not registry_passwd.stat.exists or registry_passwd.stat.size == 0
+
+    - name: "Start {{ container.name }} container"
+      ansible.builtin.import_tasks: meta/start-container.yml

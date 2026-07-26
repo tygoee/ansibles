@@ -10,13 +10,13 @@
       ansible.builtin.lineinfile:
         path: /etc/subuid
         regexp: "^containers:.*$"
-        line: "containers:100000:65536"
+        line: "containers:2147483647:2147483648"
 
     - name: Create subgid entry for containers user
       ansible.builtin.lineinfile:
         path: /etc/subgid
         regexp: "^containers:.*$"
-        line: "containers:100000:65536"
+        line: "containers:2147483647:2147483648"
 
     - name: Install all containers
       ansible.builtin.include_tasks: "setup.yml"

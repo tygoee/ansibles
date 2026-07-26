@@ -10,3 +10,26 @@ authentik:
   postgres:
     password:
   saml_enabled: true
+
+harbor:
+  # Github version number, don't forget to prefix with v
+  # Use auto for automatic version fetch. Version is referenced a lot, auto is not really tested
+  version: v2.15.2
+  # This must be be the hostname that is accessed by external clients
+  hostname: reg.mydomain.com
+  secrets:
+    # 32-character alphanumeric
+    harbor_db:
+    harbor_registry:
+    harbor_csrf:
+
+    # 16-character alphanumeric
+    harbor_jobservice:
+    harbor_core:
+    harbor_secretkey:
+
+    # 8-character alphanumeric
+    harbor_robotscanner:
+
+    # harbor_key needs to be a 4096-bit RSA key
+    harbor_key:

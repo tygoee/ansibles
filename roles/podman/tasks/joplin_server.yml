@@ -25,7 +25,7 @@
 
     - name: "Copy templated joplin service provider file"
       ansible.builtin.template:
-        src: "templates/joplin-sp.j2"
+        src: "templates/joplin-sp.xml"
         dest: "{{ joplin_volume.volume.Mountpoint }}/joplin-sp.xml"
         mode: "644"
       when: joplin.saml_enabled

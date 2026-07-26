@@ -3,6 +3,7 @@ containers:
   - technitium_dns
   - nginx_proxy_manager
   - authentik
+  - harbor
 
 # Usually user=group and uid=gid. A user always needs the same uid
 # Multiple apps with the same user/uid configuration are allowed
@@ -28,4 +29,7 @@ users:
     <<: *root
 
   authentik:
+    <<: *root
+
+  harbor:
     <<: *root
