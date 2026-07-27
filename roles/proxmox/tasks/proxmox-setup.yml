@@ -19,11 +19,19 @@
       loop_control:
         label: "{{ item.kvm.vmid }}"
 
-    - name: Setup the proxmox vm firewalls # noqa args[module]
+    - name: Get firewall info # noqa args[module]
+      community.proxmox.proxmox_firewall_info: "{{ auth | combine({'level': 'vm', 'vmid': item.kvm.vmid}) }}"
+      loop: "{{ machines.values() }}"
+      loop_control:
+        label: "{{ item.kvm.vmid }}"
+      register: firewall_info
+
+    - name: Setup the proxmox vm firewalls when empty # noqa args[module]
       community.proxmox.proxmox_firewall: "{{ auth | combine(item.firewall) }}"
       loop: "{{ machines.values() }}"
       loop_control:
         label: "{{ item.kvm.vmid }}"
+      when: (firewall_info.results | selectattr('invocation.module_args.vmid', 'equalto', item.kvm.vmid))[0].firewall_rules | length == 0
 
     - name: Get proxmox vm info # noqa args[module]
       community.proxmox.proxmox_vm_info: "{{ auth | combine({'config': 'current'}) }}"
@@ -39,8 +47,8 @@
       loop_control:
         label: "{{ item.kvm.vmid }}"
 
-    - name: Start all proxmox vms # noqa args[module]
-      community.proxmox.proxmox_kvm: "{{ auth | combine({'vmid': item.kvm.vmid, 'state': 'started'}) }}"
-      loop: "{{ machines.values() }}"
-      loop_control:
-        label: "{{ item.kvm.vmid }}"
+    # - name: Start all proxmox vms # noqa args[module]
+    #   community.proxmox.proxmox_kvm: "{{ auth | combine({'vmid': item.kvm.vmid, 'state': 'started'}) }}"
+    #   loop: "{{ machines.values() }}"
+    #   loop_control:
+    #     label: "{{ item.kvm.vmid }}"

@@ -1,6 +1,6 @@
 # Containers to install
 containers:
-  - technitium_dns
+  # - technitium_dns
   - nginx_proxy_manager
   - authentik
   - harbor

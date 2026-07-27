@@ -2,7 +2,7 @@
 from json import dump
 from os import path
 from typing import Any, cast
-from proxmox import authorized_keys, auth, node, passwords, network
+from proxmox import authorized_keys, auth, node, passwords, dns, network
 
 images = {
     "almalinux": "AlmaLinux-10-GenericCloud-latest.x86_64.qcow2"
@@ -67,6 +67,9 @@ def almalinux_template(
             "net0": "virtio,bridge=vmbr0,firewall=1"
         },
 
+        "searchdomains": dns["searchdomains"],
+        "nameservers": dns["nameservers"],
+
         "hotplug": "network,disk,cpu,memory,usb",
 
         "ide": {
@@ -87,6 +90,7 @@ def almalinux_template(
                 "action": "ACCEPT",
                 "macro": "SSH",
                 "pos": 0,
+                "log": "nolog",
                 "enable": True
             }
         ]

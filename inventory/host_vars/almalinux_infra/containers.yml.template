@@ -31,5 +31,8 @@ harbor:
     # 8-character alphanumeric
     harbor_robotscanner:
 
-    # harbor_key needs to be a 4096-bit RSA key
-    harbor_key:
+    # harbor_key needs to be a traditional 4096-bit RSA key
+    harbor_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----

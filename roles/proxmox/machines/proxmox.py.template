@@ -19,6 +19,11 @@ passwords = {
     "almalinux-games": ""
 }
 
+dns = {
+    "nameservers": "x.x.x.x",
+    "searchdomains": ""
+}
+
 
 # Edit the ip addresses here too
 def network(vmid: str | int): return {
