@@ -1,3 +1,55 @@
+authentik:
+  secret_key:
+  postgres:
+    password:
+  saml_enabled: true
+
+harbor:
+  # Github version number, don't forget to prefix with v
+  # Use auto for automatic version fetch. Version is referenced a lot, auto is not really tested
+  version: v2.15.2
+  # This must be be the hostname that is accessed by external clients
+  hostname: reg.mydomain.com
+  secrets:
+    # 32-character alphanumeric
+    harbor_db:
+    harbor_registry:
+    harbor_csrf:
+
+    # 16-character alphanumeric
+    harbor_jobservice:
+    harbor_core:
+    harbor_secretkey:
+
+    # 8-character alphanumeric
+    harbor_robotscanner:
+
+    # harbor_key needs to be a traditional 4096-bit RSA key
+    harbor_key: |
+      -----BEGIN RSA PRIVATE KEY-----
+      ...
+      -----END RSA PRIVATE KEY-----
+
+joplin:
+  # Access is restricted to this origin. Don't leave a trailing slash
+  url: https://example.com
+  postgres:
+    password:
+  saml_enabled: true
+  saml_slug: joplin
+
+# Configured for cloudflare
+ddclient:
+  # Needs to be granted Zone:DNS:Read and Zone:DNS:Write
+  cloudflare_api_token:
+  zone: example.com
+  domains: example.com,sub.example.com
+
+nextcloud:
+  secrets:
+    nextcloud_mysql_root:
+    nextcloud_mysql:
+
 pterodactyl:
   # If you're using a reverse proxy (true/false)
   proxy: false

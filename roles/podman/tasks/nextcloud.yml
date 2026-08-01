@@ -1,0 +1,29 @@
+- name: "Log in as the nextcloud user"
+  become: true
+  become_user: "{{ user.name }}"
+  vars:
+    container:
+      name: nextcloud
+      folder: nextcloud
+      files:
+        - containers/nextcloud-mariadb.container
+        - containers/nextcloud-valkey.container
+        - containers/nextcloud.container
+        - containers/nextcloud-data.volume
+        - containers/nextcloud.pod
+      envfiles:
+        - environment/nextcloud.env
+      service: nextcloud-pod
+  block:
+    - name: "Copy {{ container.name }} container files"
+      ansible.builtin.import_tasks: meta/copy-files.yml
+
+    - name: Create nextcloud podman secrets
+      containers.podman.podman_secret:
+        name: "{{ item.key }}"
+        data: "{{ item.value }}"
+      loop: "{{ nextcloud.secrets | dict2items }}"
+      no_log: true
+
+    - name: "Start {{ container.name }} container"
+      ansible.builtin.import_tasks: meta/start-container.yml

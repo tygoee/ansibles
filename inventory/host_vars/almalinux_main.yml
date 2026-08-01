@@ -1,7 +1,8 @@
 # Containers to install
 containers:
-  - portainer
+  # - portainer
   - joplin_server
+  - nextcloud
 
 # Usually user=group and uid=gid. A user always needs the same uid
 # Multiple apps with the same user/uid configuration are allowed
@@ -24,4 +25,7 @@ users:
     <<: *podman
 
   joplin_server:
+    <<: *root
+
+  nextcloud:
     <<: *root

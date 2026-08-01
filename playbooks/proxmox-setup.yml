@@ -1,3 +1,5 @@
+# Unused cause it takes an ungodly amount of time to set up, change and maintain
+# and most things aren't or barely stateful
 - name: Create the proxmox vms
   hosts: toolbox
   roles:

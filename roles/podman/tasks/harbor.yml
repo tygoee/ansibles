@@ -23,6 +23,13 @@
     - name: "Copy {{ container.name }} container files"
       ansible.builtin.import_tasks: meta/copy-files.yml
 
+    - name: Create harbor podman secrets
+      containers.podman.podman_secret:
+        name: "{{ item.key }}"
+        data: "{{ item.value }}"
+      loop: "{{ harbor.secrets | dict2items }}"
+      no_log: true
+
     - name: Get latest harbor version
       ansible.builtin.uri:
         url: https://api.github.com/repos/goharbor/harbor/releases/latest
@@ -72,13 +79,6 @@
         group: "10000"
         mode: preserve
         force: false
-
-    - name: Create harbor podman secrets
-      containers.podman.podman_secret:
-        name: "{{ item.key }}"
-        data: "{{ item.value }}"
-      loop: "{{ harbor.secrets | dict2items }}"
-      no_log: true
 
     - name: Install httpd-tools for htpasswd harbor
       ansible.builtin.dnf:
